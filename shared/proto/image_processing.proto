@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package image_processing;
+
+option go_package = "github.com/AlexeyLars/image-processor/shared/proto";
+
+service ImageProcessor {
+  rpc ApplyFilter(FilterRequest) returns (FilterResponse);
+  rpc ResizeImage(ResizeRequest) returns (ResizeResponse);
+  rpc RemoveBackground(BackgroundRemovalRequest) returns (BackgroundRemovalResponse);
+  rpc GetImageInfo(ImageInfoRequest) returns (ImageInfoResponse);
+}
+
+enum FilterType {
+  BLUR = 0;
+  SHARPEN = 1;
+  GRAYSCALE = 2;
+  SEPIA = 3;
+  BRIGHTNESS = 4;
+  CONTRAST = 5;
+}
+
+message FilterRequest {
+  bytes image_data = 1;
+  FilterType filter_type = 2;
+  float intensity = 3; // Интенсивность фильтра (0.0-1.0)
+  string session_id = 4;
+}
+
+message FilterResponse {
+  bytes processed_image = 1;
+  bool success = 2;
+  string error_message = 3;
+  int64 processing_time_ms = 4;
+}
+
+message ResizeRequest {
+  bytes image_data = 1;
+  int32 width = 2;
+  int32 height = 3;
+  bool keep_aspect_ratio = 4;
+  string session_id = 5;
+}
+
+message ResizeResponse {
+  bytes processed_image = 1;
+  bool success = 2;
+  string error_message = 3;
+  int32 actual_width = 4;
+  int32 actual_height = 5;
+  int64 processing_time_ms = 6;
+}
+
+message BackgroundRemovalRequest {
+  bytes image_data = 1;
+  string session_id = 2;
+}
+
+message BackgroundRemovalResponse {
+  bytes processed_image = 1;
+  bool success = 2;
+  string error_message = 3;
+  int64 processing_time_ms = 4;
+}
+
+message ImageInfoRequest {
+  bytes image_data = 1;
+}
+
+message ImageInfoResponse {
+  int32 width = 1;
+  int32 height = 2;
+  string format = 3;
+  int64 size_bytes = 4;
+  string color_mode = 5;
+  bool has_alpha = 6;
+}
