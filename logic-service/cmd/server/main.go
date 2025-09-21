@@ -2,6 +2,10 @@ package main
 
 import (
 	"github.com/AlexeyLars/image-processor/logic-service/internal/config"
+	"github.com/AlexeyLars/image-processor/logic-service/internal/server"
+	pb "github.com/AlexeyLars/image-processor/shared/proto"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 	"log/slog"
 	"net"
 	"os"
@@ -34,7 +38,7 @@ func main() {
 		"log_level", cfg.LogLevel)
 
 	// Create listener
-	_, err := net.Listen("tcp", cfg.GRPCAddr)
+	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
 		slog.Error("Failed to create listener",
 			"error", err,
@@ -42,4 +46,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create gRPC server
+	s := grpc.NewServer()
+
+	// Create and register ImageProcessor service
+	imageService := server.NewImageProcessorService(logger)
+	pb.RegisterImageProcessorServer(s, imageService)
+
+	// Enable reflection for comfortable debug
+	reflection.Register(s)
+
+	slog.Info("Logic service ready to accept connections",
+		"service", "logic-service",
+		"grpc_addr", cfg.GRPCAddr)
+
+	if err := s.Serve(lis); err != nil {
+		slog.Error("Failed to serve gRPC",
+			"error", err,
+			"service", "logic-service")
+		os.Exit(1)
+	}
 }
