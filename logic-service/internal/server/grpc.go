@@ -2,8 +2,11 @@ package server
 
 import (
 	"context"
+	"github.com/AlexeyLars/image-processor/logic-service/internal/config"
+	"github.com/AlexeyLars/image-processor/logic-service/internal/metrics"
 	"github.com/AlexeyLars/image-processor/logic-service/internal/processor"
 	pb "github.com/AlexeyLars/image-processor/shared/proto"
+	"golang.org/x/sync/semaphore"
 	"log/slog"
 	"time"
 )
@@ -12,12 +15,28 @@ type ImageProcessorService struct {
 	pb.UnimplementedImageProcessorServer
 	processor *processor.ImageProcessor
 	logger    *slog.Logger
+	config    *config.Config
+	metrics   *metrics.Metrics
+	memorySem *semaphore.Weighted
 }
 
-func NewImageProcessorService(logger *slog.Logger) *ImageProcessorService {
+func NewImageProcessorService(logger *slog.Logger, cfg *config.Config, metrics *metrics.Metrics) *ImageProcessorService {
+	// Create weighted semaphore based on config limits
+	maxMemoryBytes := cfg.ImageLimits.MaxConcurrentMemoryMB * 1024 * 1024
+	memorySem := semaphore.NewWeighted(maxMemoryBytes)
+
+	logger.Info("ImageProcessorService initialized",
+		"component", "grpc_server",
+		"max_concurrent_memory_mb", cfg.ImageLimits.MaxConcurrentMemoryMB,
+		"max_image_size_mb", cfg.ImageLimits.MaxImageSizeMB,
+		"processing_timeout_sec", cfg.ImageLimits.ProcessingTimeoutSec)
+
 	return &ImageProcessorService{
 		processor: processor.NewImageProcessor(),
 		logger:    logger.With("component", "grpc_server"),
+		config:    cfg,
+		metrics:   metrics,
+		memorySem: memorySem,
 	}
 }
 
